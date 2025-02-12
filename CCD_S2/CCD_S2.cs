@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Oracle.ManagedDataAccess.Client;
 
@@ -15,9 +16,8 @@ namespace CCD_S2
     public partial class CCD_S2 : Form
     {
 
-        //private const string ConnectionString = @"Data Source=(DESCRIPTION =(ADDRESS = (PROTOCOL = TCP)(HOST = 10.41.200.220)(PORT = 1521))(CONNECT_DATA = (SERVER = DEDICATED)(SERVICE_NAME = vnsfcs)));User Id=VN;Password=VN#sfcs;";
-        private static string ConnectionString = @"Data Source=(DESCRIPTION =(ADDRESS = (PROTOCOL = TCP)(HOST = 10.41.200.222)(PORT = 1521))(CONNECT_DATA = (SERVER = DEDICATED)(SERVICE_NAME = sfcsdbt)));User Id=VN;Password=VN#sfcs;";
-        private static string connESH = @"Data Source=(DESCRIPTION =(ADDRESS = (PROTOCOL = TCP)(HOST = 10.5.1.53)(PORT = 1621))(CONNECT_DATA = (SERVER = DEDICATED)(SERVICE_NAME = erpdw)));User Id=GPPROD;Password=SWEETCAT;";
+        private const string ConnectionString = @"";
+        private static string connESH = @"";
         private static string customerPN = "";
         private static string gemtekPN = "";
         private static string reelID = "";
@@ -35,11 +35,15 @@ namespace CCD_S2
         private static string receiptno = "";
         public CCD_S2()
         {
+
             InitializeComponent();
             //ngăn trạng thái focus trên textbox này (hoặc chặn sự kiện Enter) -> để textbox chỉ đọc
             txt_ccd.Enter += (s, e) => { this.ActiveControl = null; };
             PreventMultipleInstances();
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;  // Không cho phép phóng to
+            this.MinimizeBox = false;  // Không cho phép thu nhỏ
+            this.FormBorderStyle = FormBorderStyle.FixedSingle; // Đặt kiểu viền cố định
         }
         private void PreventMultipleInstances()
         {
@@ -47,7 +51,7 @@ namespace CCD_S2
             Process[] existingProcesses = Process.GetProcessesByName(processName);
             if (existingProcesses.Length > 1)
             {
-                MessageBox.Show("Program is open", "Message");
+                MessageBox.Show("项目已开放" + "\n" + "\n" + "Program is open", "Message", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Environment.Exit(2);
             }
         }
@@ -78,7 +82,7 @@ namespace CCD_S2
             using (OracleConnection conn = new OracleConnection(ConnectionString))
             {
                 conn.Open();
-                string query = "SELECT GEMTEK_PN FROM GM1_CUSTOMER_COMPONETPARTS WHERE CUSTOMER_PN = :customerPN AND ENABLED = 'Y' and type = :typeReceipt";
+                string query = "";
                 using (OracleCommand cmd = new OracleCommand(query, conn))
                 {
                     cmd.Parameters.Add(new OracleParameter("customerPN", customerPN));
@@ -161,12 +165,12 @@ namespace CCD_S2
             string LabelProgramPath = @"C:\Program Files (x86)\Seagull\BarTender\7.75\bartend.exe"; //bartender programs
             if (!File.Exists(LabelFilePath))//check label path has exits
             {
-                MessageBox.Show("Not found Label file");
+                MessageBox.Show("Not found Label file" + "\n" + "\n" + "未找到标签文件", "Notification", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             if (!File.Exists(LabelProgramPath)) //check bartender programs
             {
-                MessageBox.Show("Not found bartender program");
+                MessageBox.Show("Not found bartender program" + "\n" + "\n" + "未找到调酒师程序", "Notification", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -192,7 +196,7 @@ namespace CCD_S2
                 if (parts.Length != 4)
                 {
                     reportdata = data;
-                    responsedata = "Invalid CCD Format";
+                    responsedata = "Invalid CCD Format/CCD 格式无效";
                     responsedata += "\n-----------------------------------------------\n";
                     backgroundWorker1.ReportProgress(0);
                     backgroundWorker1.CancelAsync();
@@ -252,8 +256,7 @@ namespace CCD_S2
                         printLabel();
 
                         //Insert lịch sử in vào PVS.PVS_REEL_PRINT_LOG
-                        string sqlInsertPrintLog = "INSERT INTO PVS.PVS_REEL_PRINT_LOG(REEL_ID,ACTION,PRINT_DATE,PRINT_USER,COMPUTER_NAME,PROGRAM_NAME) " +
-                                                 "values('" + reelID + "','CCD',sysdate,'" + UserName + "','" + PcName + "','CCD')";
+                        string sqlInsertPrintLog = "";
                         try
                         {
                             using (OracleConnection connection = new OracleConnection(ConnectionString))
@@ -317,12 +320,11 @@ namespace CCD_S2
 
             if (receipttb.Text == "")
             {
-                MessageBox.Show("Please enter Receipt No.");
+                MessageBox.Show("Please enter Receipt No."+"\n"+"\n"+ "请输入收据号码", "Notification", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             receiptno = receipttb.Text;
-            string typereceiptsql = @"Select Distinct Product_Line From Apps.Gm_Mtl_Customer_Item_V@Erpxxsfcs Mci Where Mci.Customer_Number = 33193 
-                       And Mci.Item In (Select Item From Xxsfcs_Wms_Receipts_V@Erpxxsfcs Where Organization_Id = '1010' And Receipt_Num = '" + receiptno + "' And Quantity_Received <> 0)";
+            string typereceiptsql = @"";
             using (OracleConnection conn = new OracleConnection(ConnectionString))
             {
                 conn.Open();
@@ -335,19 +337,23 @@ namespace CCD_S2
                             typeReceipt = reader["PRODUCT_LINE"].ToString();
                             if (reader.Read())
                             {
-                                MessageBox.Show("There are more than one type of this receipt. Please check again.");
+                                MessageBox.Show("There are more than one type of this receipt. Please check again." + "\n" + "\n" + "此收据有多种类型，请重新检查", "Notification", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                                 return;
                             }
                             //MessageBox.Show(typeReceipt);
                         }
                         else
                         {
-                            MessageBox.Show("Can't find type of this receipt. Please enter new Receipt No.");
+                            MessageBox.Show("Can't find type of this receipt. Please enter new Receipt No."+"\n"+"\n"+ "找不到此收据的类型。请输入新的收据号", "Notification", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                             return;
                         }
                     }
                 }
             }
+
+
+            
+
             //MessageBox.Show(typeReceipt);
             //return;
             Socket listenSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -355,6 +361,13 @@ namespace CCD_S2
             listenSocket.Bind(new IPEndPoint(IPAddress.Any, port));
             listenSocket.Listen(5);//只接受5条信息数据排队
             backgroundWorker1.RunWorkerAsync(listenSocket);
+            label3.Text = "OK";// note
+        }
+
+        private void btn_clear_Click(object sender, EventArgs e)
+        {
+            receipttb.Clear();
+            label3.Text = "Waitting...";
         }
     }
 }
